@@ -6,6 +6,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target node",
+    "inspector": "npx @modelcontextprotocol/inspector bun run src/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

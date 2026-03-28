@@ -8,10 +8,12 @@ export function createServer(): McpServer {
   });
 
   // Hello world tool — placeholder for development
-  server.tool(
+  server.registerTool(
     "hello",
-    "A simple hello world tool for testing",
-    { name: z.string().max(256).describe("Name to greet") },
+    {
+      description: "A simple hello world tool for testing",
+      inputSchema: { name: z.string().max(256).describe("Name to greet") },
+    },
     async ({ name }) => ({
       content: [{ type: "text" as const, text: `Hello, ${name}!` }],
     }),

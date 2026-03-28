@@ -184,7 +184,7 @@ describe("extractVideoId", () => {
 
 ### MCP Server Patterns
 
-- Register tools via `server.tool()` with Zod schemas for input validation.
+- Register tools via `server.registerTool()` with Zod schemas for input validation.
 - Tool handlers are async — always return `{ content: [...] }` objects.
 - Use `text` content type for transcript data.
 - Keep tool descriptions concise but informative (they are shown to LLMs).
