@@ -2,7 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { fetchTranscript } from "./transcript.js";
-import { extractVideoId } from "./utils.js";
+import {
+  extractVideoId,
+  formatTranscriptPlain,
+  formatTranscriptTimestamped,
+} from "./utils.js";
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -16,7 +20,7 @@ export function createServer(): McpServer {
       description:
         "Fetch the transcript of a YouTube video. " +
         "Accepts a YouTube URL or video ID. " +
-        "Returns the full transcript as plain text.",
+        "Returns the transcript with timestamps by default.",
       inputSchema: {
         url: z
           .string()
@@ -30,13 +34,22 @@ export function createServer(): McpServer {
             "Language code (e.g. 'en', 'es'). " +
             "Defaults to the video's primary language.",
           ),
+        plain: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, returns the transcript as plain text " +
+            "without timestamps. Defaults to false.",
+          ),
       },
     },
-    async ({ url, lang }) => {
+    async ({ url, lang, plain }) => {
       try {
         const videoId = extractVideoId(url);
         const result = await fetchTranscript(videoId, lang);
-        const text = result.segments.map((s) => s.text).join(" ");
+        const text = plain
+          ? formatTranscriptPlain(result.segments)
+          : formatTranscriptTimestamped(result.segments);
         return {
           content: [{ type: "text" as const, text }],
         };
