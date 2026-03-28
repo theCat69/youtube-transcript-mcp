@@ -9,3 +9,10 @@ export interface TranscriptResult {
   title?: string;
   segments: TranscriptSegment[];
 }
+
+export interface CaptionTrack {
+  baseUrl: string;
+  languageCode: string;
+  name: string;
+  kind?: string; // "asr" = auto-generated
+}
