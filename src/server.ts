@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { version } from "../package.json" with { type: "json" };
 import { fetchTranscript } from "./transcript.js";
 import {
   extractVideoId,
@@ -11,7 +12,7 @@ import {
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "youtube-transcript",
-    version: "1.0.0",
+    version,
   });
 
   server.registerTool(
