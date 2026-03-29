@@ -1,5 +1,5 @@
 {
-  "name": "youtube-transcript-mcp",
+  "name": "@thecat69/youtube-transcript-mcp",
   "version": "1.0.0",
   "description": "MCP server for fetching YouTube video transcripts",
   "type": "module",
@@ -23,6 +23,7 @@
     "llm"
   ],
   "license": "MIT",
+  "publishConfig": { "access": "public" },
   "scripts": {
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target node",

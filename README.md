@@ -15,7 +15,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "youtube-transcript": {
       "command": "npx",
-      "args": ["-y", "youtube-transcript-mcp"]
+      "args": ["-y", "@thecat69/youtube-transcript-mcp"]
     }
   }
 }
@@ -31,7 +31,7 @@ Edit `~/.config/opencode/opencode.json` (global) or `opencode.json` at your proj
   "mcp": {
     "youtube-transcript": {
       "type": "local",
-      "command": ["npx", "-y", "youtube-transcript-mcp"],
+      "command": ["npx", "-y", "@thecat69/youtube-transcript-mcp"],
       "enabled": true
     }
   }
@@ -47,7 +47,7 @@ Any client that supports stdio MCP servers can use the same pattern:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "youtube-transcript-mcp"]
+  "args": ["-y", "@thecat69/youtube-transcript-mcp"]
 }
 ```
 
