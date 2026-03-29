@@ -17,7 +17,14 @@ const BROWSER_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
 const REQUEST_TIMEOUT_MS = 10_000;
-const MAX_RESPONSE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_RESPONSE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+/**
+ * Extended request options that include maxRedirections.
+ * undici v7 processes maxRedirections via the redirect interceptor;
+ * the TypeScript type omits it from RequestOptions, so we extend locally.
+ */
+type RequestOpts = Parameters<typeof request>[1] & { maxRedirections?: number };
 
 /**
  * Read response body text with a size limit to prevent memory exhaustion.
@@ -196,7 +203,7 @@ async function fetchCaptionTracksInnerTube(
     videoId,
   });
 
-  const { statusCode, body: responseBody } = await request(INNERTUBE_URL, {
+  const opts: RequestOpts = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -205,7 +212,11 @@ async function fetchCaptionTracksInnerTube(
     body,
     headersTimeout: REQUEST_TIMEOUT_MS,
     bodyTimeout: REQUEST_TIMEOUT_MS,
-  });
+    maxRedirections: 0,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+
+  const { statusCode, body: responseBody } = await request(INNERTUBE_URL, opts);
 
   if (statusCode !== 200) {
     throw new Error(
@@ -227,7 +238,7 @@ async function fetchCaptionTracksHtml(
 ): Promise<CaptionTrack[]> {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-  const { statusCode, body: responseBody } = await request(url, {
+  const opts: RequestOpts = {
     method: "GET",
     headers: {
       "User-Agent": BROWSER_USER_AGENT,
@@ -235,7 +246,11 @@ async function fetchCaptionTracksHtml(
     },
     headersTimeout: REQUEST_TIMEOUT_MS,
     bodyTimeout: REQUEST_TIMEOUT_MS,
-  });
+    maxRedirections: 0,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+
+  const { statusCode, body: responseBody } = await request(url, opts);
 
   if (statusCode !== 200) {
     throw new Error(
@@ -304,8 +319,13 @@ function selectCaptionTrack(
   if (lang) {
     const match = tracks.find((t) => t.languageCode === lang);
     if (!match) {
+      // FIX-5: Sanitize track names to prevent prompt-injection payloads in error messages
       const available = tracks
-        .map((t) => `${t.languageCode} (${t.name})`)
+        .map((t) => {
+          const safeCode = t.languageCode.replace(/[^a-zA-Z0-9 \-_]/g, "");
+          const safeName = t.name.replace(/[^a-zA-Z0-9 \-_]/g, "");
+          return `${safeCode} (${safeName})`;
+        })
         .join(", ");
       throw new Error(
         `Language "${lang}" not available. Available: ${available}`,
@@ -416,12 +436,16 @@ export async function fetchTranscript(
     }
   }
 
+  // FIX-6: Collapse dual-error to generic message; log underlying errors
   if (tracks.length === 0) {
     if (innerTubeError && htmlError) {
-      throw new Error(
-        `No captions available. InnerTube: ${innerTubeError.message}. ` +
-        `HTML fallback: ${htmlError.message}`,
+      console.error(
+        "InnerTube error:",
+        innerTubeError.message,
+        "| HTML fallback error:",
+        htmlError.message,
       );
+      throw new Error("No captions could be retrieved for this video.");
     }
     throw new Error("No captions available for this video");
   }
@@ -432,11 +456,15 @@ export async function fetchTranscript(
   // Step 3: Fetch transcript XML
   validateTranscriptUrl(track.baseUrl);
 
-  const { statusCode, body: xmlBody } = await request(track.baseUrl, {
+  const xmlOpts: RequestOpts = {
     method: "GET",
     headersTimeout: REQUEST_TIMEOUT_MS,
     bodyTimeout: REQUEST_TIMEOUT_MS,
-  });
+    maxRedirections: 0,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+
+  const { statusCode, body: xmlBody } = await request(track.baseUrl, xmlOpts);
 
   if (statusCode !== 200) {
     throw new Error(

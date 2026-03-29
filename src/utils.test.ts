@@ -8,28 +8,34 @@ import {
 } from "./utils.js";
 
 describe("extractVideoId", () => {
-  it("should extract ID from standard YouTube URL", () => {
-    expect(extractVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
-      .toBe("dQw4w9WgXcQ");
-  });
-
-  it("should extract ID from short URL", () => {
-    expect(extractVideoId("https://youtu.be/dQw4w9WgXcQ"))
-      .toBe("dQw4w9WgXcQ");
-  });
-
-  it("should extract ID from embed URL", () => {
-    expect(extractVideoId("https://youtube.com/embed/dQw4w9WgXcQ"))
-      .toBe("dQw4w9WgXcQ");
-  });
-
-  it("should extract ID from shorts URL", () => {
-    expect(extractVideoId("https://youtube.com/shorts/dQw4w9WgXcQ"))
-      .toBe("dQw4w9WgXcQ");
-  });
-
-  it("should accept a raw 11-character video ID", () => {
-    expect(extractVideoId("dQw4w9WgXcQ")).toBe("dQw4w9WgXcQ");
+  it.each([
+    [
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "dQw4w9WgXcQ",
+      "standard YouTube URL",
+    ],
+    [
+      "https://youtu.be/dQw4w9WgXcQ",
+      "dQw4w9WgXcQ",
+      "short URL",
+    ],
+    [
+      "https://youtube.com/embed/dQw4w9WgXcQ",
+      "dQw4w9WgXcQ",
+      "embed URL",
+    ],
+    [
+      "https://youtube.com/shorts/dQw4w9WgXcQ",
+      "dQw4w9WgXcQ",
+      "shorts URL",
+    ],
+    [
+      "dQw4w9WgXcQ",
+      "dQw4w9WgXcQ",
+      "raw 11-character video ID",
+    ],
+  ])("should extract ID from %s (%s)", (input, expected) => {
+    expect(extractVideoId(input)).toBe(expected);
   });
 
   it("should throw on invalid input", () => {
@@ -45,33 +51,44 @@ describe("extractVideoId", () => {
 });
 
 describe("formatTimestamp", () => {
-  it("should format seconds as [MM:SS]", () => {
-    expect(formatTimestamp(0)).toBe("[00:00]");
-    expect(formatTimestamp(5)).toBe("[00:05]");
-    expect(formatTimestamp(65)).toBe("[01:05]");
-    expect(formatTimestamp(599)).toBe("[09:59]");
+  it.each([
+    [0, "[00:00]"],
+    [5, "[00:05]"],
+    [65, "[01:05]"],
+    [599, "[09:59]"],
+  ])("should format %d seconds as %s (MM:SS)", (input, expected) => {
+    expect(formatTimestamp(input)).toBe(expected);
   });
 
-  it("should format with hours as [HH:MM:SS]", () => {
-    expect(formatTimestamp(3600)).toBe("[01:00:00]");
-    expect(formatTimestamp(3661)).toBe("[01:01:01]");
-    expect(formatTimestamp(36000)).toBe("[10:00:00]");
+  it.each([
+    [3600, "[01:00:00]"],
+    [3661, "[01:01:01]"],
+    [36000, "[10:00:00]"],
+  ])("should format %d seconds as %s (HH:MM:SS)", (input, expected) => {
+    expect(formatTimestamp(input)).toBe(expected);
   });
 
-  it("should floor fractional seconds", () => {
-    expect(formatTimestamp(1.7)).toBe("[00:01]");
-    expect(formatTimestamp(59.9)).toBe("[00:59]");
+  it.each([
+    [1.7, "[00:01]"],
+    [59.9, "[00:59]"],
+  ])("should floor fractional seconds (%d → %s)", (input, expected) => {
+    expect(formatTimestamp(input)).toBe(expected);
   });
 });
 
 describe("formatTranscriptTimestamped", () => {
   it("should format segments with timestamps", () => {
+    // Arrange
     const segments = [
       { text: "Hello world", start: 0 },
       { text: "This is a test", start: 5.5 },
       { text: "Third segment", start: 3661 },
     ];
+
+    // Act
     const result = formatTranscriptTimestamped(segments);
+
+    // Assert
     expect(result).toBe(
       "[00:00] Hello world\n" +
       "[00:05] This is a test\n" +
@@ -86,10 +103,13 @@ describe("formatTranscriptTimestamped", () => {
 
 describe("formatTranscriptPlain", () => {
   it("should join segments with spaces", () => {
+    // Arrange
     const segments = [
       { text: "Hello" },
       { text: "world" },
     ];
+
+    // Act + Assert
     expect(formatTranscriptPlain(segments)).toBe("Hello world");
   });
 

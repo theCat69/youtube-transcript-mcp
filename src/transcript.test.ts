@@ -308,4 +308,47 @@ describe("fetchTranscript", () => {
     await expect(fetchTranscript("dQw4w9WgXcQ"))
       .rejects.toThrow("Untrusted transcript URL protocol");
   });
+
+  it("should throw generic message when both InnerTube and HTML fallback fail", async () => {
+    // InnerTube request throws
+    mockRequest.mockRejectedValueOnce(new Error("Network error"));
+    // HTML fallback request also throws
+    mockRequest.mockRejectedValueOnce(new Error("Connection refused"));
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("No captions could be retrieved for this video.");
+  });
+
+  it("should throw when transcript XML fetch returns non-200 status", async () => {
+    // InnerTube succeeds
+    mockRequest.mockResolvedValueOnce(
+      createInnerTubeResponse([ENGLISH_TRACK]) as never,
+    );
+    // XML fetch returns 403
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 403,
+      body: createMockBody("Forbidden"),
+    } as never);
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Failed to fetch transcript XML (status 403)");
+  });
+
+  it("should sanitize track names with special characters in language-not-found error", async () => {
+    const maliciousTrack = {
+      baseUrl: "https://www.youtube.com/api/timedtext?v=xxx&lang=en",
+      name: { simpleText: "English <inject>payload</inject>" },
+      languageCode: "en!@#$",
+    };
+
+    mockRequest.mockResolvedValueOnce(
+      createInnerTubeResponse([maliciousTrack]) as never,
+    );
+
+    const error = await fetchTranscript("dQw4w9WgXcQ", "fr").catch((e: Error) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain("<inject>");
+    expect((error as Error).message).not.toContain("!@#$");
+  });
 });

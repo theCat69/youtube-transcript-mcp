@@ -60,7 +60,7 @@ Fetches the transcript of a YouTube video.
 | Parameter | Type    | Required | Description                                                              |
 |-----------|---------|----------|--------------------------------------------------------------------------|
 | `url`     | string  | ✅        | YouTube video URL or video ID (e.g. `https://youtu.be/dQw4w9WgXcQ`)     |
-| `lang`    | string  | ❌        | Language code (e.g. `en`, `fr`, `es`). Defaults to the video's primary language. |
+| `lang`    | string  | ❌        | BCP 47 language code (e.g. `en`, `fr`, `es`, `pt-BR`). Defaults to the video's primary language. |
 | `plain`   | boolean | ❌        | When `true`, returns plain text without timestamps. Default: `false`.     |
 
 **Example output (default, with timestamps):**
@@ -82,7 +82,6 @@ Never gonna give you up Never gonna let you down Never gonna run around and dese
 ### Prerequisites
 
 - [Bun](https://bun.sh) >= 1.x
-- Node.js >= 18.x
 
 ### Setup
 

@@ -9,6 +9,27 @@ import {
   formatTranscriptTimestamped,
 } from "./utils.js";
 
+/**
+ * Error message prefixes considered safe to surface to the MCP client.
+ * All other errors are replaced with a generic message to avoid leaking internals.
+ */
+const USER_SAFE_PREFIXES = [
+  "No captions",
+  "Invalid",
+  "Could not extract",
+  "Language ",
+];
+
+function sanitizeErrorMessage(message: string): string {
+  const isSafe = USER_SAFE_PREFIXES.some((prefix) =>
+    message.startsWith(prefix),
+  );
+  if (isSafe) {
+    return message;
+  }
+  return "Failed to fetch transcript. Please check the video URL and try again.";
+}
+
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "youtube-transcript",
@@ -29,6 +50,10 @@ export function createServer(): McpServer {
           .describe("YouTube video URL or video ID"),
         lang: z
           .string()
+          .regex(
+            /^[a-zA-Z]{2,3}(-[a-zA-Z]{2,8})?$/,
+            "Invalid language code format",
+          )
           .max(10)
           .optional()
           .describe(
@@ -55,8 +80,10 @@ export function createServer(): McpServer {
           content: [{ type: "text" as const, text }],
         };
       } catch (error) {
-        const message =
+        const rawMessage =
           error instanceof Error ? error.message : String(error);
+        console.error("get_transcript error:", rawMessage);
+        const message = sanitizeErrorMessage(rawMessage);
         return {
           content: [{ type: "text" as const, text: message }],
           isError: true,

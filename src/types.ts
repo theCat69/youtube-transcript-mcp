@@ -6,7 +6,6 @@ export interface TranscriptSegment {
 
 export interface TranscriptResult {
   videoId: string;
-  title?: string;
   segments: TranscriptSegment[];
 }
 
