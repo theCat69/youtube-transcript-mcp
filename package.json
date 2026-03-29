@@ -1,6 +1,6 @@
 {
   "name": "@thecat69/youtube-transcript-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for fetching YouTube video transcripts",
   "type": "module",
   "main": "./dist/index.js",
