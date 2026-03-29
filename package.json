@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "youtube-transcript-mcp": "./dist/index.js"
+    "youtube-transcript-mcp": "dist/index.js"
   },
   "files": [
     "dist/",
@@ -23,7 +23,9 @@
     "llm"
   ],
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target node",
