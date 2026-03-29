@@ -1,6 +1,6 @@
 {
   "name": "@thecat69/youtube-transcript-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for fetching YouTube video transcripts",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,7 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node",
+    "build": "bun run scripts/build.ts",
     "inspector": "npx @modelcontextprotocol/inspector bun run src/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
