@@ -41,16 +41,26 @@ bun run src/index.ts     # Run the MCP server locally (stdio transport)
 bun run build            # Build for production
 ```
 
-## Detailed Guidelines
+## Critical Inline Rules
 
-All detailed coding, building, testing, documentation, and security guidelines have been
-organized into the `.project-guidelines-for-ai/` directory:
+These rules must never be violated — violations break the server or introduce security issues:
 
-- **[Coding Guidelines](.project-guidelines-for-ai/coding/coding-guidelines.md)** — Code style, naming conventions, import ordering, error handling, architecture patterns, MCP and Zod patterns.
-- **[Code Examples](.project-guidelines-for-ai/coding/code-examples/README.md)** — Example code snippets demonstrating project patterns.
-- **[Building Guidelines](.project-guidelines-for-ai/building/building-guidelines.md)** — Prerequisites, environment setup, build commands, CI/CD pipeline.
-- **[Testing Guidelines](.project-guidelines-for-ai/testing/testing-guidelines.md)** — Test framework, file naming, writing tests, mocking, coverage, running tests.
-- **[Documentation Guidelines](.project-guidelines-for-ai/documentation/documentation-guidelines.md)** — TSDoc format, README standards, API docs, changelog.
-- **[Security Guidelines](.project-guidelines-for-ai/security/security-guidelines.md)** — Secrets management, input validation, dependency security, MCP-specific threats, SSRF prevention.
+- **`console.log()` is FORBIDDEN** — stdout is the MCP stdio transport. Use `console.error()` only.
+- **`.js` extensions required** on all relative imports: `import { foo } from "./utils.js"`.
+- **`server.registerTool()`** — use this, not the deprecated `server.tool()`.
+- **`inputSchema` is a plain object** of Zod fields — NOT `z.object({...})`.
+- **Error sanitization**: errors returned to MCP clients must go through `sanitizeErrorMessage()`.
+- **HTTPS only** with `maxRedirections: 0` for all undici requests.
 
-AI agents should read the relevant guideline files before implementing features.
+## Detailed Guidelines (Skills)
+
+All detailed coding, building, testing, documentation, and security guidelines are in the
+`.opencode/skills/` directory (version-controlled, loaded by AI agents via the `skill` tool):
+
+- **[project-coding](.opencode/skills/project-coding/SKILL.md)** — Code style, naming conventions, import ordering, error handling, architecture patterns, MCP and Zod patterns, code examples.
+- **[project-build](.opencode/skills/project-build/SKILL.md)** — Prerequisites, environment setup, build commands, CI/CD pipeline.
+- **[project-test](.opencode/skills/project-test/SKILL.md)** — Test framework, file naming, writing tests, mocking, coverage requirements, running tests.
+- **[project-documentation](.opencode/skills/project-documentation/SKILL.md)** — TSDoc format, README standards, API docs, changelog.
+- **[project-security](.opencode/skills/project-security/SKILL.md)** — Secrets management, input validation, dependency security, MCP-specific threats, SSRF prevention, error sanitization.
+
+AI agents should load the relevant skill(s) before implementing features.

@@ -1,3 +1,8 @@
+---
+name: project-test
+description: Project-specific testing guidelines, test framework conventions, patterns, and coverage requirements
+---
+
 # Testing Guidelines
 
 This project uses **Vitest 4.x** with `@vitest/coverage-v8` for testing, running on the Bun runtime.
@@ -6,16 +11,17 @@ This project uses **Vitest 4.x** with `@vitest/coverage-v8` for testing, running
 
 ## Test Framework
 
-- **Vitest 4.x**: Modern test framework compatible with Bun runtime.
-- **Coverage**: `@vitest/coverage-v8` for V8-based code coverage.
+- **Vitest 4.1.2**: Modern test framework compatible with Bun runtime.
+- **Coverage**: `@vitest/coverage-v8` (V8-based coverage — faster than Istanbul).
 - **Configuration**: `vitest.config.ts` at project root.
+- `restoreMocks: true` is configured globally in `vitest.config.ts` — mocks are auto-restored after each test.
 
 ---
 
 ## Test Location & File Naming
 
 - **Co-located tests**: Tests live next to their source files in `src/`.
-- **Naming**: `<module>.test.ts` (e.g., `utils.ts` -> `utils.test.ts`, `transcript.ts` -> `transcript.test.ts`).
+- **Naming**: `<module>.test.ts` (e.g., `utils.ts` → `utils.test.ts`).
 - **One test file per module**: Each source file has at most one co-located test file.
 
 ```
@@ -26,8 +32,8 @@ src/
   transcript.test.ts
   server.ts
   server.test.ts
-  cache.ts              (planned — not yet implemented)
-  cache.test.ts         (planned — not yet implemented)
+  cache.ts          (planned — not yet implemented)
+  cache.test.ts     (planned — not yet implemented)
 ```
 
 ---
@@ -75,7 +81,7 @@ describe("extractVideoId", () => {
 | `expect(() => fn()).toThrow(message)` | Synchronous error cases |
 | `expect(promise).rejects.toThrow()` | Async error cases |
 | `expect(fn).toHaveBeenCalledWith(args)` | Mock verification |
-| `expect(value).toMatchSnapshot()` | Complex output verification |
+| `expect(value).toMatchInlineSnapshot()` | Complex output verification (prefer inline over external snapshots) |
 
 ### Async Testing
 
@@ -94,7 +100,7 @@ it("should reject on network error", async () => {
 
 ### Parameterized Tests
 
-Use `it.each()` for testing multiple input/output combinations:
+Use `it.each()` to test multiple input/output combinations:
 
 ```typescript
 it.each([
@@ -108,7 +114,7 @@ it.each([
 
 ### Test Independence
 
-- Each test must be independent and isolated -- no shared mutable state between tests.
+- Each test must be independent and isolated — no shared mutable state between tests.
 - Use `beforeEach()` for shared setup.
 - Use `afterEach()` for cleanup.
 - Never rely on test execution order.
@@ -117,9 +123,9 @@ it.each([
 
 ## Mocking & Fixtures
 
-### Module Mocking
+### HTTP Mocking (undici)
 
-This project mocks `undici` for HTTP request testing:
+This project mocks `undici` for all HTTP request testing:
 
 ```typescript
 import { vi } from "vitest";
@@ -129,44 +135,60 @@ vi.mock("undici", () => ({
 }));
 ```
 
+### Transcript Module Mocking (server tests)
+
+```typescript
+vi.mock("./transcript.js", () => ({
+  fetchTranscript: vi.fn(),
+}));
+```
+
 ### Mock Reset
 
-Reset mocks between tests to prevent state leakage:
+`restoreMocks: true` is configured globally in `vitest.config.ts`, so mocks auto-restore after each test. For test-specific reset when needed:
 
 ```typescript
 beforeEach(() => {
-  vi.resetAllMocks();
+  mockFetchTranscript.mockReset();
 });
 ```
 
-Or configure globally in `vitest.config.ts` (recommended addition — not currently configured):
+### Integration Tests (server.test.ts)
+
+Use `InMemoryTransport.createLinkedPair()` with a real MCP `Client` to integration-test tool invocations over an in-memory transport — no HTTP involved:
 
 ```typescript
-export default defineConfig({
-  test: {
-    restoreMocks: true, // recommended but not yet enabled in this project
-  },
-});
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { createServer } from "./server.js";
+
+const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+const server = createServer();
+await server.connect(serverTransport);
+const client = new Client({ name: "test-client", version: "0.0.1" });
+await client.connect(clientTransport);
+
+const result = await client.callTool({ name: "get_transcript", arguments: { url: "..." } });
 ```
 
 ### Helper Factories
 
 The project uses helper factory functions for test data (established pattern in `transcript.test.ts`):
 
-- `createMockBody()`: Creates a mock HTTP response body.
-- `createInnerTubeResponse()`: Creates mock InnerTube API response data.
-- `createXmlResponse()`: Creates mock transcript XML.
-- `createHtmlResponse()`: Creates mock YouTube HTML page with embedded player response.
+- `createMockBody(content)`: Creates a mock HTTP response body.
+- `createInnerTubeResponse(tracks)`: Creates mock InnerTube API response data.
+- `createXmlResponse(xml)`: Creates mock transcript XML.
+- `createHtmlResponse(tracks)`: Creates mock YouTube HTML page with embedded player response.
 
 **Prefer creating helper factories over inline test data** for complex objects.
 
 ### Mocking Preferences
 
 - **Prefer dependency injection** over module mocking for testability.
-- Use `vi.fn()` for creating standalone mock functions.
+- Use `vi.fn()` for standalone mock functions.
 - Use `vi.spyOn(object, "method")` for spying on real implementations.
 - Use `vi.mock("module")` when dependency injection is not feasible.
-- Use `vi.useFakeTimers()` / `vi.useRealTimers()` for time-dependent tests.
+- Use `vi.useFakeTimers()` / `vi.useRealTimers()` for time-dependent tests — always restore in `afterEach()`.
 - Never use real API keys, secrets, or external services in tests.
 
 ---
@@ -179,7 +201,7 @@ Run coverage with:
 bun vitest run --coverage
 ```
 
-### Recommended Thresholds
+### Enforced Thresholds (vitest.config.ts)
 
 | Metric | Minimum |
 |---|---|
@@ -187,6 +209,8 @@ bun vitest run --coverage
 | Branches | 80% |
 | Functions | 80% |
 | Lines | 80% |
+
+These thresholds are enforced in `vitest.config.ts` and will fail the test run if not met.
 
 Focus on **meaningful coverage** rather than chasing 100%. Prioritize:
 

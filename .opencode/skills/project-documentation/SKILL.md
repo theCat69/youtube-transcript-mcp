@@ -1,3 +1,8 @@
+---
+name: project-documentation
+description: Project-specific documentation standards for code, README, API docs, and changelog
+---
+
 # Documentation Guidelines
 
 Standards for documenting code and maintaining project documentation in this TypeScript/Bun MCP server project.
@@ -46,7 +51,7 @@ export function extractVideoId(input: string): string {
 ### When to Document
 
 - **Always document**: Exported functions, interfaces, types, classes, constants.
-- **Optional**: Private/internal functions (use only if logic is non-obvious).
+- **Optional**: Private/internal functions (add comments only if logic is non-obvious).
 - **Zod schemas**: Use `.describe()` on schema fields, especially for MCP tool input schemas (descriptions are shown to LLMs).
 
 ```typescript
@@ -90,14 +95,14 @@ Document each registered MCP tool with:
 
 ## API Documentation
 
-This project exposes MCP tools (not REST APIs). Document tools as described above.
+This project exposes MCP tools (not REST APIs). Document tools as described in "README Format".
 
 For internal APIs (exported functions between modules):
 
 - Document with TSDoc.
 - Include parameter types and return types in the documentation.
 - Document error conditions with `@throws`.
-- Provide usage examples for complex functions.
+- Provide usage examples with `@example` for complex functions.
 
 ---
 
@@ -105,9 +110,9 @@ For internal APIs (exported functions between modules):
 
 When making changes:
 
-- Write clear, imperative commit messages: "Add transcript caching" (not "Added caching").
+- Write clear, imperative commit messages: `"Add transcript caching"` (not `"Added caching"`).
 - Keep commits focused on a single change.
-- For significant features or breaking changes, consider maintaining a `CHANGELOG.md` with entries in reverse chronological order.
+- For significant features or breaking changes, maintain a `CHANGELOG.md` with entries in reverse chronological order.
 
 ### Changelog Format (if used)
 
@@ -115,7 +120,7 @@ When making changes:
 ## [Unreleased]
 
 ### Added
-- Transcript caching with env-paths for OS-appropriate directories
+- Transcript caching for OS-appropriate directories
 
 ### Changed
 - Improved error messages for invalid video URLs
@@ -131,3 +136,4 @@ When making changes:
 - Document any Bun-specific APIs used and their deviations from Node.js behavior.
 - Include `bun install` and `bun run` commands in all setup instructions.
 - Note minimum Bun version requirements if applicable.
+- When documenting environment variable access, note that `Bun.env` and `process.env` are equivalent.
