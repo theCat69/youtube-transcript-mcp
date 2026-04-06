@@ -15,7 +15,7 @@ const ANDROID_USER_AGENT =
   "com.google.android.youtube/20.10.38 (Linux; U; Android 14)";
 
 const BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -371,16 +371,16 @@ function parseSrv3Xml(xml: string): TranscriptSegment[] {
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(xml)) !== null) {
-    const t = parseInt(match[1], 10);
-    const d = parseInt(match[2], 10);
+    const startMs = parseInt(match[1], 10);
+    const durationMs = parseInt(match[2], 10);
     const rawText = match[3];
 
     const text = decodeHtmlEntities(rawText);
 
     segments.push({
       text,
-      start: t / 1000,
-      duration: d / 1000,
+      start: startMs / 1000,
+      duration: durationMs / 1000,
     });
   }
 
@@ -402,6 +402,21 @@ function parseTranscriptXml(xml: string): TranscriptSegment[] {
   }
 
   throw new Error("Failed to parse transcript XML — unrecognized format");
+}
+
+/**
+ * Error message prefixes that indicate specific, actionable failures worth
+ * surfacing directly to the caller rather than wrapping in a generic message.
+ */
+const SPECIFIC_ERROR_PREFIXES = [
+  "Rate limited by YouTube",
+  "Could not find player response",
+  "Failed to extract player response JSON",
+  "Response body exceeds maximum allowed size",
+] as const;
+
+function isSpecificError(err: Error): boolean {
+  return SPECIFIC_ERROR_PREFIXES.some((prefix) => err.message.startsWith(prefix));
 }
 
 /**
@@ -438,7 +453,20 @@ export async function fetchTranscript(
         "| HTML fallback error:",
         htmlError.message,
       );
+      // Surface specific actionable errors rather than a generic message
+      if (isSpecificError(innerTubeError)) {
+        throw innerTubeError;
+      }
+      if (isSpecificError(htmlError)) {
+        throw htmlError;
+      }
       throw new Error("No captions could be retrieved for this video.");
+    }
+    if (htmlError) {
+      console.error("HTML fallback error:", htmlError.message);
+      if (isSpecificError(htmlError)) {
+        throw htmlError;
+      }
     }
     throw new Error("No captions available for this video");
   }

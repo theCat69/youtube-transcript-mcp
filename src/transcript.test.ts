@@ -50,6 +50,16 @@ function createXmlResponse(
   };
 }
 
+function createOversizedBody(sizeBytes: number): MockBody {
+  const chunk = Buffer.alloc(sizeBytes, "x");
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield chunk;
+    },
+    destroy: vi.fn(),
+  };
+}
+
 function createHtmlResponse(
   captionTracks: unknown[],
 ): { statusCode: number; body: MockBody } {
@@ -349,5 +359,110 @@ describe("fetchTranscript", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).not.toContain("<inject>");
     expect((error as Error).message).not.toContain("!@#$");
+  });
+
+  it("should throw when HTML page contains CAPTCHA challenge", async () => {
+    mockRequest.mockRejectedValueOnce(new Error("InnerTube failed"));
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 200,
+      body: createMockBody(
+        '<html><div class="g-recaptcha"></div></html>',
+      ),
+    } as never);
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Rate limited by YouTube");
+  });
+
+  it("should throw when ytInitialPlayerResponse marker is missing from HTML", async () => {
+    mockRequest.mockRejectedValueOnce(new Error("InnerTube failed"));
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 200,
+      body: createMockBody("<html><body>No player response here</body></html>"),
+    } as never);
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Could not find player response");
+  });
+
+  it("should throw when ytInitialPlayerResponse JSON has unmatched braces", async () => {
+    mockRequest.mockRejectedValueOnce(new Error("InnerTube failed"));
+    // Inject a response where the JSON object is never closed
+    const html =
+      '<html><script>var ytInitialPlayerResponse = {"captions": {</script></html>';
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 200,
+      body: createMockBody(html),
+    } as never);
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Failed to extract player response JSON from HTML");
+  });
+
+  it("should throw when transcript XML format is unrecognized", async () => {
+    mockRequest.mockResolvedValueOnce(
+      createInnerTubeResponse([ENGLISH_TRACK]) as never,
+    );
+    mockRequest.mockResolvedValueOnce(
+      createXmlResponse("<unknown><element/></unknown>") as never,
+    );
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Failed to parse transcript XML");
+  });
+
+  it("should handle track name as plain string instead of simpleText object", async () => {
+    const trackWithStringName = {
+      baseUrl: "https://www.youtube.com/api/timedtext?v=xxx&lang=en",
+      name: "English",
+      languageCode: "en",
+    };
+
+    mockRequest.mockResolvedValueOnce(
+      createInnerTubeResponse([trackWithStringName]) as never,
+    );
+    mockRequest.mockResolvedValueOnce(
+      createXmlResponse(CLASSIC_XML) as never,
+    );
+
+    const result = await fetchTranscript("dQw4w9WgXcQ");
+    expect(result.segments).toHaveLength(2);
+  });
+
+  it("should fall back to HTML scraping when InnerTube returns non-object JSON", async () => {
+    // InnerTube returns a JSON array instead of an object
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 200,
+      body: createMockBody("[]"),
+    } as never);
+    mockRequest.mockResolvedValueOnce(
+      createHtmlResponse([ENGLISH_TRACK]) as never,
+    );
+    mockRequest.mockResolvedValueOnce(
+      createXmlResponse(CLASSIC_XML) as never,
+    );
+
+    const result = await fetchTranscript("dQw4w9WgXcQ");
+    expect(result.segments).toHaveLength(2);
+    expect(mockRequest).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("readResponseText (via fetchTranscript)", () => {
+  beforeEach(() => {
+    mockRequest.mockReset();
+  });
+
+  it("should abort and throw when response body exceeds 5 MB", async () => {
+    const oversizedBody = createOversizedBody(5 * 1024 * 1024 + 1);
+    mockRequest.mockResolvedValueOnce({
+      statusCode: 200,
+      body: oversizedBody,
+    } as never);
+
+    await expect(fetchTranscript("dQw4w9WgXcQ"))
+      .rejects.toThrow("Response body exceeds maximum allowed size");
+
+    expect(oversizedBody.destroy).toHaveBeenCalled();
   });
 });
