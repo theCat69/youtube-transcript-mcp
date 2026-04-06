@@ -82,10 +82,7 @@ export function decodeHtmlEntities(text: string): string {
     String.fromCharCode(parseInt(hex, 16)),
   );
 
-  // &amp; decoded last
   decoded = decoded.replace(/&amp;/g, "&");
-
-  // Handle literal \n in captions
   decoded = decoded.replace(/\n/g, " ");
 
   return decoded;
