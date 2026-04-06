@@ -19,4 +19,4 @@ if (!result.success) {
 }
 
 const outputs = result.outputs.map((o) => o.path).join(", ");
-console.log(`Build complete: ${outputs}`);
+console.error(`Build complete: ${outputs}`);

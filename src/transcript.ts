@@ -38,7 +38,6 @@ async function readResponseText(
   for await (const chunk of body) {
     totalSize += chunk.length;
     if (totalSize > maxSize) {
-      // Destroy the stream to free resources
       body.destroy();
       throw new Error("Response body exceeds maximum allowed size");
     }
@@ -319,7 +318,6 @@ function selectCaptionTrack(
   if (lang) {
     const match = tracks.find((t) => t.languageCode === lang);
     if (!match) {
-      // FIX-5: Sanitize track names to prevent prompt-injection payloads in error messages
       const available = tracks
         .map((t) => {
           const safeCode = t.languageCode.replace(/[^a-zA-Z0-9 \-_]/g, "");
@@ -373,7 +371,6 @@ function parseSrv3Xml(xml: string): TranscriptSegment[] {
     const d = parseInt(match[2], 10);
     const rawText = match[3];
 
-    // Strip <s> tags and decode
     const text = decodeHtmlEntities(rawText);
 
     segments.push({
@@ -390,13 +387,11 @@ function parseSrv3Xml(xml: string): TranscriptSegment[] {
  * Parse transcript XML, handling both classic and srv3 formats.
  */
 function parseTranscriptXml(xml: string): TranscriptSegment[] {
-  // Try classic format first
   const classicSegments = parseClassicXml(xml);
   if (classicSegments.length > 0) {
     return classicSegments;
   }
 
-  // Try srv3 format
   const srv3Segments = parseSrv3Xml(xml);
   if (srv3Segments.length > 0) {
     return srv3Segments;
@@ -412,7 +407,6 @@ export async function fetchTranscript(
   videoId: string,
   lang?: string,
 ): Promise<TranscriptResult> {
-  // Step 1: Get caption tracks (try InnerTube first, then HTML fallback)
   let tracks: CaptionTrack[];
   let innerTubeError: Error | undefined;
   let htmlError: Error | undefined;
@@ -436,7 +430,6 @@ export async function fetchTranscript(
     }
   }
 
-  // FIX-6: Collapse dual-error to generic message; log underlying errors
   if (tracks.length === 0) {
     if (innerTubeError && htmlError) {
       console.error(
@@ -450,10 +443,8 @@ export async function fetchTranscript(
     throw new Error("No captions available for this video");
   }
 
-  // Step 2: Select track
   const track = selectCaptionTrack(tracks, lang);
 
-  // Step 3: Fetch transcript XML
   validateTranscriptUrl(track.baseUrl);
 
   const xmlOpts: RequestOpts = {
@@ -474,10 +465,8 @@ export async function fetchTranscript(
 
   const xml = await readResponseText(xmlBody);
 
-  // Step 4: Parse XML
   const segments = parseTranscriptXml(xml);
 
-  // Step 5: Build result
   return {
     videoId,
     segments,
