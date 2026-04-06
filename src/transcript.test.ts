@@ -7,7 +7,6 @@ vi.mock("undici", () => ({
   request: vi.fn(),
 }));
 
-// Import the mocked request
 import { request } from "undici";
 
 const mockRequest = vi.mocked(request);

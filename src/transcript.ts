@@ -6,6 +6,7 @@ import type {
   TranscriptResult,
   TranscriptSegment,
 } from "./types.js";
+import { toError } from "./utils.js";
 
 const INNERTUBE_URL =
   "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
@@ -158,11 +159,11 @@ function extractCaptionTracks(
   }
 
   const tracks: CaptionTrack[] = [];
-  for (const raw of rawTracks) {
-    if (typeof raw !== "object" || raw === null) {
+  for (const rawTrack of rawTracks) {
+    if (typeof rawTrack !== "object" || rawTrack === null) {
       continue;
     }
-    const track = raw as Record<string, unknown>;
+    const track = rawTrack as Record<string, unknown>;
     const baseUrl = track["baseUrl"];
     const languageCode = track["languageCode"];
     const nameObj = track["name"];
@@ -420,9 +421,7 @@ export async function fetchTranscript(
   try {
     tracks = await fetchCaptionTracksInnerTube(videoId);
   } catch (error) {
-    innerTubeError = error instanceof Error
-      ? error
-      : new Error(String(error));
+    innerTubeError = toError(error);
     tracks = [];
   }
 
@@ -430,9 +429,7 @@ export async function fetchTranscript(
     try {
       tracks = await fetchCaptionTracksHtml(videoId);
     } catch (error) {
-      htmlError = error instanceof Error
-        ? error
-        : new Error(String(error));
+      htmlError = toError(error);
     }
   }
 

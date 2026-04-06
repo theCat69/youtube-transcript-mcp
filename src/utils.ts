@@ -1,5 +1,12 @@
 const MAX_INPUT_LENGTH = 2048;
 
+/**
+ * Coerce an unknown catch value into an Error instance.
+ */
+export function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
+}
+
 export function extractVideoId(input: string): string {
   if (input.length > MAX_INPUT_LENGTH) {
     throw new Error("Input exceeds maximum allowed length");

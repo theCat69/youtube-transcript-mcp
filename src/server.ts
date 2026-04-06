@@ -72,10 +72,10 @@ export function createServer(): McpServer {
     async ({ url, lang, plain }) => {
       try {
         const videoId = extractVideoId(url);
-        const result = await fetchTranscript(videoId, lang);
+        const transcriptResult = await fetchTranscript(videoId, lang);
         const text = plain
-          ? formatTranscriptPlain(result.segments)
-          : formatTranscriptTimestamped(result.segments);
+          ? formatTranscriptPlain(transcriptResult.segments)
+          : formatTranscriptTimestamped(transcriptResult.segments);
         return {
           content: [{ type: "text" as const, text }],
         };
