@@ -26,6 +26,16 @@ const MAX_RESPONSE_SIZE = 5 * 1024 * 1024; // 5 MB
  */
 type RequestOpts = Parameters<typeof request>[1] & { maxRedirections?: number };
 
+/** Shared security-hardened request options applied to every outbound request. */
+function baseRequestOpts(): RequestOpts {
+  return {
+    headersTimeout: REQUEST_TIMEOUT_MS,
+    bodyTimeout: REQUEST_TIMEOUT_MS,
+    maxRedirections: 0,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+}
+
 /**
  * Read response body text with a size limit to prevent memory exhaustion.
  */
@@ -80,6 +90,18 @@ export function decodeHtmlEntities(text: string): string {
   return decoded;
 }
 
+const ALLOWED_HOSTNAMES = [
+  "www.youtube.com",
+  "youtube.com",
+  "video.google.com",
+  "www.google.com",
+] as const;
+
+const ALLOWED_HOSTNAME_SUFFIXES = [
+  ".youtube.com",
+  ".google.com",
+] as const;
+
 /**
  * Validate that a URL hostname is safe (belongs to YouTube/Google).
  */
@@ -93,19 +115,9 @@ function validateTranscriptUrl(url: string): void {
   }
 
   const hostname = parsed.hostname.toLowerCase();
-  const ALLOWED_HOSTNAMES = [
-    "www.youtube.com",
-    "youtube.com",
-    "video.google.com",
-    "www.google.com",
-  ];
-  const ALLOWED_SUFFIXES = [
-    ".youtube.com",
-    ".google.com",
-  ];
 
-  const isAllowed = ALLOWED_HOSTNAMES.includes(hostname) ||
-    ALLOWED_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+  const isAllowed = (ALLOWED_HOSTNAMES as readonly string[]).includes(hostname) ||
+    ALLOWED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 
   if (!isAllowed) {
     throw new Error(
@@ -127,8 +139,8 @@ function extractCaptionTracks(
     return [];
   }
 
-  const resp = playerResponse as Record<string, unknown>;
-  const captions = resp["captions"];
+  const playerResponseObj = playerResponse as Record<string, unknown>;
+  const captions = playerResponseObj["captions"];
   if (typeof captions !== "object" || captions === null) {
     return [];
   }
@@ -203,16 +215,13 @@ async function fetchCaptionTracksInnerTube(
   });
 
   const opts: RequestOpts = {
+    ...baseRequestOpts(),
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "User-Agent": ANDROID_USER_AGENT,
     },
     body,
-    headersTimeout: REQUEST_TIMEOUT_MS,
-    bodyTimeout: REQUEST_TIMEOUT_MS,
-    maxRedirections: 0,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   };
 
   const { statusCode, body: responseBody } = await request(INNERTUBE_URL, opts);
@@ -238,15 +247,12 @@ async function fetchCaptionTracksHtml(
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
   const opts: RequestOpts = {
+    ...baseRequestOpts(),
     method: "GET",
     headers: {
       "User-Agent": BROWSER_USER_AGENT,
       "Accept-Language": "en-US,en;q=0.9",
     },
-    headersTimeout: REQUEST_TIMEOUT_MS,
-    bodyTimeout: REQUEST_TIMEOUT_MS,
-    maxRedirections: 0,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   };
 
   const { statusCode, body: responseBody } = await request(url, opts);
@@ -448,11 +454,8 @@ export async function fetchTranscript(
   validateTranscriptUrl(track.baseUrl);
 
   const xmlOpts: RequestOpts = {
+    ...baseRequestOpts(),
     method: "GET",
-    headersTimeout: REQUEST_TIMEOUT_MS,
-    bodyTimeout: REQUEST_TIMEOUT_MS,
-    maxRedirections: 0,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   };
 
   const { statusCode, body: xmlBody } = await request(track.baseUrl, xmlOpts);
